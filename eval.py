@@ -8,29 +8,29 @@ import argparse
 from numpy import random
 import json
 
-
 def load_vllm_model(model_path):
     llm = LLM(model=model_path)
     return llm
 
 def generate_prompt_landmark(n_garbage, seed, percent):
-    """Generates a text file and inserts an passkey at a random position."""
+    """Generates a text file and inserts a passkey at a random position."""
     rnd_state = random.get_state()
     random.seed(seed)
-    # n_garbage_prefix = random.randint(0, n_garbage)
     n_garbage_prefix = int(percent * n_garbage)
     n_garbage_suffix = n_garbage - n_garbage_prefix
 
-    task_description = "There is an important info hidden inside a lot of irrelevant text. Find it and memorize them. I will quiz you about the important information there."
-    garbage = "The grass is green. The sky is blue. The sun is yellow. Here we go. There and back again."
+    # Task description and garbage text in Mandarin (Taiwan)
+    task_description = "有一個重要的信息隱藏在大量無關的文字中。找到它並記住它。我會考你這裡面的重要信息。"
+    garbage = "草是綠的。天空是藍的。太陽是黃色的。我們開始吧。來來回回。"
     garbage_inf = " ".join([garbage] * 50000)
     assert len(garbage_inf) >= n_garbage
     garbage_prefix = garbage_inf[:n_garbage_prefix]
     garbage_suffix = garbage_inf[:n_garbage_suffix]
     pass_key = random.randint(50000, 500000)
 
-    information_line = f"The pass key is {pass_key}. Remember it. {pass_key} is the pass key."
-    final_question = "What is the pass key? The pass key is"
+    # Information line and final question in Mandarin (Taiwan)
+    information_line = f"通行碼是 {pass_key}。記住它。{pass_key} 是通行碼。"
+    final_question = "通行碼是什麼？通行碼是"
     lines = [
         task_description,
         garbage_prefix,
@@ -54,17 +54,15 @@ def parse_config():
     args = parser.parse_args()
     return args
 
-
 if __name__ == "__main__":
-
     args = parse_config()
 
     output_name = f"output.jsonl"
-    print("results will be save to:", output_name)
+    print("results will be saved to:", output_name)
     model_path = args.model
     model = load_vllm_model(model_path)
 
-    # hyper params
+    # Hyperparameters
     k = 1000
     max_length = int(args.max_length.replace("k", '')) * k
     min_length = int(args.min_length.replace("k", '')) * k
@@ -72,7 +70,6 @@ if __name__ == "__main__":
     num_per = 10
     depth_percent = 1 / num_per
 
-    # length_list = [k] + [i for i in range(4*k, max_length + 1, gap)]
     length_list = [i for i in range(min_length, max_length + 1, gap)]
 
     results = []
@@ -110,4 +107,3 @@ if __name__ == "__main__":
             print(res)
             with open(output_name, "a") as f:
                 print(json.dumps(res), file=f)
-
