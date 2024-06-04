@@ -70,13 +70,14 @@ def parse_config():
     parser.add_argument('--gap', type=str, default="8k")
     parser.add_argument('--gpu', type=int, default=0)
     parser.add_argument('--num_tests', type=int, default=10, help='number of repeat testing for each length')
+    parser.add_argument('--output', type=str, required=True)
     args = parser.parse_args()
     return args
 
 if __name__ == "__main__":
     args = parse_config()
 
-    output_name = f"output.jsonl"
+    output_name = args.output
     print("results will be saved to:", output_name)
     model_path = args.model
 
