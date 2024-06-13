@@ -11,8 +11,8 @@ import torch
 
 gpu_count = torch.cuda.device_count()
 
-def load_vllm_model(model_path, max_length=1024, tensor_parallel_size=gpu_count):
-    llm = LLM(model=model_path, tensor_parallel_size=tensor_parallel_size, max_model_len=max_length)
+def load_vllm_model(model_path, tensor_parallel_size=gpu_count):
+    llm = LLM(model=model_path, tensor_parallel_size=tensor_parallel_size)
     return llm
 
 def generate_prompt_landmark(n_garbage, seed, percent):
@@ -89,7 +89,7 @@ if __name__ == "__main__":
     num_per = 10
     depth_percent = 1 / num_per
 
-    model = load_vllm_model(model_path, max_length=max_length, tensor_parallel_size=gpu_count)
+    model = load_vllm_model(model_path, tensor_parallel_size=gpu_count)
 
     length_list = [i for i in range(min_length, max_length + 1, gap)]
 
@@ -101,30 +101,66 @@ if __name__ == "__main__":
         best_of=4,
         max_tokens=5,
     )
+    
+    prompts = []
+    answers = []
     for length in length_list:
         # This is a rough ratio to control the number of texts and tokens
-        n_garbage = int(length / 1.05 // k * k)
+        n_garbage = int(length * 1.0 // k * k)
 
         depths = [depth_percent * i for i in range(1, num_per + 1)]
         for depth in depths:
-            passed_tests = 0
-            all_accuries = {}
-            prompts = []
-            answers = []
             for j in range(args.num_tests):
                 prompt, answer = generate_prompt_landmark(n_garbage, j, depth)
-                prompts.append(prompt)
+                prompts.append(prompt) 
                 answers.append(answer)
 
-            outputs = model.generate(prompts, sampling_params)
-            for output, answer in zip(outputs, answers):
-                print("[prediction]:  ", repr(output.outputs[0].text))
+    outputs = model.generate(prompts, sampling_params)
+    
+    prompt_idx = 0
+    for length in length_list:
+        depths = [depth_percent * i for i in range(1, num_per + 1)]
+        for depth in depths:
+            passed_tests = 0
+            for j in range(args.num_tests):
+                output = outputs[prompt_idx].outputs[0].text
+                answer = answers[prompt_idx]
+                prompt_idx += 1
+                
+                print("[prediction]:  ", repr(output))
                 print("[ground truth]:  ", repr(answer))
-                if answer in output.outputs[0].text:
+                if answer in output:
                     passed_tests += 1
             accuracy = float(passed_tests) / args.num_tests
             res = {"context_length": f"{length // k}k", "depth_percent": depth * 100, "score": accuracy}
             results.append(res)
             print(res)
-            with open(output_name, "a") as f:
+            with open(output_name, "a") as f:  
                 print(json.dumps(res), file=f)
+    # for length in length_list:
+    #     # This is a rough ratio to control the number of texts and tokens
+    #     n_garbage = int(length * 0.8 // k * k)
+
+    #     depths = [depth_percent * i for i in range(1, num_per + 1)]
+    #     for depth in depths:
+    #         passed_tests = 0
+    #         all_accuries = {}
+    #         prompts = []
+    #         answers = []
+    #         for j in range(args.num_tests):
+    #             prompt, answer = generate_prompt_landmark(n_garbage, j, depth)
+    #             prompts.append(prompt)
+    #             answers.append(answer)
+
+    #         outputs = model.generate(prompts, sampling_params)
+    #         for output, answer in zip(outputs, answers):
+    #             print("[prediction]:  ", repr(output.outputs[0].text))
+    #             print("[ground truth]:  ", repr(answer))
+    #             if answer in output.outputs[0].text:
+    #                 passed_tests += 1
+    #         accuracy = float(passed_tests) / args.num_tests
+    #         res = {"context_length": f"{length // k}k", "depth_percent": depth * 100, "score": accuracy}
+    #         results.append(res)
+    #         print(res)
+    #         with open(output_name, "a") as f:
+    #             print(json.dumps(res), file=f)
